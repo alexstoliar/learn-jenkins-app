@@ -32,6 +32,7 @@ pipeline {
                 sh '''
                    echo "Running tests..."
                    if test -e build/index.html; then echo "Exists"; fi
+                   npm test
                 '''
             }
         }
