@@ -5,7 +5,7 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'node:18-bookworm'image 'node:20-bookworm'
+                    image 'node:18-bookworm'
                 }
             }
             steps {
