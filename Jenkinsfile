@@ -31,6 +31,7 @@ pipeline {
             steps {
                 sh '''
                    echo "Running tests..."
+                   -e /build/index.html && echo "Build successful" || (echo "Build failed" && exit 1)
                 '''
             }
         }
