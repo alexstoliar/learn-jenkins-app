@@ -18,7 +18,7 @@ pipeline {
                     npm run build
                 '''
             }
-        
+        }
         stage('Test') {
             agent {
                 docker {
@@ -35,5 +35,4 @@ pipeline {
             }
         }
     }
-}
 }
