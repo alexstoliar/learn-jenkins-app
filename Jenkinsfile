@@ -31,7 +31,7 @@ pipeline {
             steps {
                 sh '''
                    echo "Running tests..."
-                   if test -e /build/index.html; then echo "Exists"; fi
+                   test -e /build/index.html
                 '''
             }
         }
