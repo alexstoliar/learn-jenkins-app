@@ -5,19 +5,17 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'node:18-bookworm'
-                    args '-v /var/jenkins/npm-cache:/root/.npm'
+                    image 'node:18-bookworm'image 'node:20-bookworm'
                 }
             }
             steps {
                 sh '''
-                    ls -la
-                    node --version
-                    npm --version
-                    rm -rf node_modules
+                    mkdir -p /tmp/app
+                    cp -a . /tmp/app
+                    cd /tmp/app
+
                     npm ci
                     npm run build
-                    ls -la
                 '''
             }
         }
