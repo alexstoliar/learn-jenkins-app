@@ -6,7 +6,7 @@ pipeline {
             agent {
                 docker {
                     image 'node:18-alpine'
-                    reuseNode false
+                    args '-v /var/jenkins/npm-cache:/root/.npm'
                 }
             }
             steps {
