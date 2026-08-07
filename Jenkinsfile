@@ -5,15 +5,15 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'node:18-bookworm'
+                    image 'node:20-bookworm'
                 }
+            }
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
             }
             steps {
                 sh '''
-                    mkdir -p /tmp/app
-                    cp -a . /tmp/app
-                    cd /tmp/app
-
+                    rm -rf node_modules
                     npm ci
                     npm run build
                 '''
