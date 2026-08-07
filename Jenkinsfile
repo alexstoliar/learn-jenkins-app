@@ -18,6 +18,21 @@ pipeline {
                     npm run build
                 '''
             }
+        
+        stage('Test') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                }
+            }
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+            }
+            steps {
+                sh '''
+                   echo "Running tests..."
+                '''
+            }
         }
     }
 }
