@@ -30,8 +30,6 @@ pipeline {
             }
             environment {
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-                JEST_JUNIT_OUTPUT_DIR = 'test-results'
-                JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
             }
             steps {
                 sh '''
