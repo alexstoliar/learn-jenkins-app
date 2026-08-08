@@ -35,11 +35,22 @@ pipeline {
                    npm test
                 '''
             }
-        }
-    }
-    post {
-        always {
-            junit 'Workspace/test-results/junit.xml'
-        }
+        }stage('E2E Test') {
+            agent { 
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                }
+            }
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+            }
+            steps {
+                sh '''
+                    npm install -g serve
+                    serve -s build
+                    npx playwright test
+                '''
+            }
+
     }
 }
