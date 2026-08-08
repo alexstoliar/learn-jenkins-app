@@ -6,6 +6,8 @@ pipeline {
             agent {
                 docker {
                     image 'node:20-bookworm'
+                    reuseNode true
+                    
                 }
             }
             environment {
@@ -23,6 +25,7 @@ pipeline {
             agent {
                 docker {
                     image 'node:20-bookworm'
+                    reuseNode true
                 }
             }
             environment {
@@ -40,6 +43,7 @@ pipeline {
             agent { 
                 docker {
                     image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                    reuseNode true
                 }
             }
             environment {
