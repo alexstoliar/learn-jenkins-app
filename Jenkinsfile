@@ -55,7 +55,7 @@ pipeline {
                     if [ -f test-results/junit.xml ]; then
                         echo "FOUND: test-results/junit.xml"
                         wc -c test-results/junit.xml
-                        head -20 test-results/junit.xml
+                        cat test-results/junit.xml
                     else
                         echo "ERROR: test-results/junit.xml NOT FOUND"
                         exit 1
