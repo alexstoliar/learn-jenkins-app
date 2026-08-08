@@ -30,6 +30,8 @@ pipeline {
             }
             environment {
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                JEST_JUNIT_OUTPUT_DIR = 'test-results'
+                JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
             }
             steps {
                 sh '''
@@ -46,9 +48,18 @@ pipeline {
                     echo "===== test-results ====="
                     ls -la test-results
 
-                    echo "===== JUnit content ====="
-                    test -s test-results/junit.xml
-                    cat test-results/junit.xml
+                    echo "===== PACKAGE JEST-JUNIT ====="
+                    npm list jest-junit
+
+                    echo "===== JUNIT FILE ====="
+                    if [ -f test-results/junit.xml ]; then
+                        echo "FOUND: test-results/junit.xml"
+                        wc -c test-results/junit.xml
+                        head -20 test-results/junit.xml
+                    else
+                        echo "ERROR: test-results/junit.xml NOT FOUND"
+                        exit 1
+                    fi
                 '''
             }
         }
