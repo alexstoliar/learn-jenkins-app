@@ -43,7 +43,7 @@ pipeline {
                     npm test
 
                     echo "===== JUnit files ====="
-                    find . -name "junit.xml" -o -name "*.xml"
+                    find . -type f -name "*.xml" -print
 
                     echo "===== test-results ====="
                     ls -la test-results
