@@ -85,7 +85,23 @@ pipeline {
     }
     post {
         always {
-            junit 'test-results/junit.xml'
+            echo '===== BEFORE JUNIT ====='
+
+            sh '''
+            echo "Workspace: $WORKSPACE"
+            echo "JUnit file:"
+            ls -l test-results/junit.xml
+            echo "JUnit size:"
+            wc -c test-results/junit.xml
+        '''
+
+        junit(
+            testResults: 'test-results/junit.xml',
+            allowEmptyResults: false,
+            keepLongStdio: true
+        )
+
+            echo '===== AFTER JUNIT ====='
             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
         }
     }
