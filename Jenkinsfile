@@ -51,6 +51,6 @@ pipeline {
                     npx playwright test
                 '''
             }
-
+        }
     }
 }
