@@ -49,6 +49,7 @@ pipeline {
                     ls -la test-results
 
                     echo "===== JUnit content ====="
+                    test -s test-results/junit.xml
                     cat test-results/junit.xml
                 '''
             }
@@ -75,7 +76,7 @@ pipeline {
     }
     post {
         always {
-            junit testResults: 'test-results/junit.xml', allowEmptyResults: true
+            junit 'test-results/junit.xml'
             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
         }
     }
