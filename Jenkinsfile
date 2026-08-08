@@ -36,8 +36,20 @@ pipeline {
             steps {
                 sh '''
                    echo "Running tests..."
-                   if test -e build/index.html; then echo "Exists"; fi
-                   npm test -- --watchAll=false
+
+                    rm -rf test-results
+                    mkdir -p test-results
+
+                    npm test
+
+                    echo "===== JUnit files ====="
+                    find . -name "junit.xml" -o -name "*.xml"
+
+                    echo "===== test-results ====="
+                    ls -la test-results
+
+                    echo "===== JUnit content ====="
+                    cat test-results/junit.xml
                 '''
             }
         }
