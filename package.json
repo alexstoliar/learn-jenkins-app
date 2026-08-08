@@ -15,7 +15,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test --testResultsProcessor=\"jest-junit\"",
+    "test": "react-scripts test --watchAll=false --reporters=default --reporters=jest-junit",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -44,10 +44,10 @@
     "suiteName": "jest tests",
     "outputDirectory": "test-results",
     "outputName": "junit.xml",
-    "uniqueOutputName": "false",
+    "uniqueOutputName": false,
     "classNameTemplate": "{classname}-{title}",
     "titleTemplate": "{classname}-{title}",
     "ancestorSeparator": " › ",
-    "usePathForSuiteName": "true"
+    "usePathForSuiteName": true
   }
 }
