@@ -61,6 +61,7 @@ pipeline {
                         exit 1
                     fi
                 '''
+                stash name: 'junit-results', includes: 'test-results/junit.xml'
             }
         }
         stage('E2E Test') {
@@ -85,23 +86,8 @@ pipeline {
     }
     post {
         always {
-            echo '===== BEFORE JUNIT ====='
-
-            sh '''
-            echo "Workspace: $WORKSPACE"
-            echo "JUnit file:"
-            ls -l test-results/junit.xml
-            echo "JUnit size:"
-            wc -c test-results/junit.xml
-        '''
-
-        junit(
-            testResults: 'test-results/junit.xml',
-            allowEmptyResults: false,
-            keepLongStdio: true
-        )
-
-            echo '===== AFTER JUNIT ====='
+            unstash 'junit-results'
+            junit 'test-results/junit.xml'
             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
         }
     }
