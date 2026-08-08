@@ -30,12 +30,14 @@ pipeline {
             }
             environment {
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                JEST_JUNIT_OUTPUT_DIR = 'test-results'
+                JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
             }
             steps {
                 sh '''
                    echo "Running tests..."
                    if test -e build/index.html; then echo "Exists"; fi
-                   npm test
+                   npm test -- --watchAll=false
                 '''
             }
         }
@@ -61,7 +63,7 @@ pipeline {
     }
     post {
         always {
-            junit 'test-results/junit.xml'
+            junit testResults: 'test-results/junit.xml', allowEmptyResults: true
             publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
         }
     }
