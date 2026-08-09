@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Build') {
+        stage('Install and Build') {
             agent {
                 docker {
                     image 'node:20-bookworm'
@@ -10,16 +10,14 @@ pipeline {
                 }
             }
 
-            environment {
-                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-            }
-
             steps {
                 sh '''
-                    rm -rf node_modules
                     npm ci
                     npm run build
                 '''
+
+                stash name: 'app',
+                      includes: 'build/**,package.json,package-lock.json,src/**,public/**,playwright.config.*,tests/**'
             }
         }
 
@@ -30,69 +28,44 @@ pipeline {
                     agent {
                         docker {
                             image 'node:20-bookworm'
-                            reuseNode true
                         }
                     }
 
                     environment {
-                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
 
                     steps {
+                        unstash 'app'
+
                         sh '''
-                            echo "Running tests..."
-
-                            rm -rf test-results
-                            mkdir -p test-results
-
+                            npm ci
                             npm test
-
-                            echo "===== JUnit files ====="
-                            find . -type f -name "*.xml" -print
-
-                            echo "===== test-results ====="
-                            ls -la test-results
-
-                            echo "===== PACKAGE JEST-JUNIT ====="
-                            npm list jest-junit
-
-                            echo "===== JUNIT FILE ====="
-                            if [ -f test-results/junit.xml ]; then
-                                echo "FOUND: test-results/junit.xml"
-                                wc -c test-results/junit.xml
-                                cat test-results/junit.xml
-                            else
-                                echo "ERROR: test-results/junit.xml NOT FOUND"
-                                exit 1
-                            fi
                         '''
                     }
 
                     post {
                         always {
-                            junit 'test-results/junit.xml'
+                            junit allowEmptyResults: true,
+                                  testResults: 'test-results/junit.xml'
                         }
                     }
                 }
 
-                stage('E2E Test') {
+                stage('E2E Tests') {
                     agent {
                         docker {
                             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
-                            reuseNode true
                         }
                     }
 
-                    environment {
-                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
-                    }
-
                     steps {
+                        unstash 'app'
+
                         sh '''
-                            npm install serve
-                            node_modules/.bin/serve -s build &
+                            npm ci
+                            npx serve -s build &
                             sleep 10
                             npx playwright test --reporter=html
                         '''
@@ -101,9 +74,8 @@ pipeline {
                     post {
                         always {
                             publishHTML([
-                                allowMissing: false,
+                                allowMissing: true,
                                 alwaysLinkToLastBuild: false,
-                                icon: '',
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
