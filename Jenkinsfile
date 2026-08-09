@@ -7,12 +7,13 @@ pipeline {
                 docker {
                     image 'node:20-bookworm'
                     reuseNode true
-                    
                 }
             }
+
             environment {
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
             }
+
             steps {
                 sh '''
                     rm -rf node_modules
@@ -21,8 +22,10 @@ pipeline {
                 '''
             }
         }
+
         stage('Run Tests') {
             parallel {
+
                 stage('Unit Tests') {
                     agent {
                         docker {
@@ -30,14 +33,16 @@ pipeline {
                             reuseNode true
                         }
                     }
+
                     environment {
                         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
+
                     steps {
                         sh '''
-                        echo "Running tests..."
+                            echo "Running tests..."
 
                             rm -rf test-results
                             mkdir -p test-results
@@ -63,23 +68,27 @@ pipeline {
                                 exit 1
                             fi
                         '''
+                    }
+
                     post {
                         always {
                             junit 'test-results/junit.xml'
                         }
-    }
                     }
                 }
+
                 stage('E2E Test') {
-                    agent { 
+                    agent {
                         docker {
                             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
                             reuseNode true
                         }
                     }
+
                     environment {
                         NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                     }
+
                     steps {
                         sh '''
                             npm install serve
@@ -88,13 +97,24 @@ pipeline {
                             npx playwright test --reporter=html
                         '''
                     }
+
                     post {
                         always {
-                            publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, icon: '', keepAll: false, reportDir: 'playwright-report', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: '', useWrapperFileDirectly: true])
+                            publishHTML([
+                                allowMissing: false,
+                                alwaysLinkToLastBuild: false,
+                                icon: '',
+                                keepAll: false,
+                                reportDir: 'playwright-report',
+                                reportFiles: 'index.html',
+                                reportName: 'HTML Report',
+                                reportTitles: '',
+                                useWrapperFileDirectly: true
+                            ])
                         }
                     }
                 }
-                    }
-                }
+            }
+        }
     }
 }
