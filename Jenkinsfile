@@ -21,15 +21,10 @@ pipeline {
                     npm run build
                 '''
 
-                stash name: 'app', includes: '''
-                    package.json,
-                    package-lock.json,
-                    src/**,
-                    public/**,
-                    build/**,
-                    tests/**,
-                    playwright.config.*
-                '''
+                stash(
+                    name: 'app',
+                    includes: 'package.json,package-lock.json,src/**,public/**,build/**,tests/**,playwright.config.*'
+                )
             }
         }
 
@@ -90,6 +85,7 @@ pipeline {
                             publishHTML([
                                 allowMissing: true,
                                 alwaysLinkToLastBuild: false,
+                                icon: '',
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
