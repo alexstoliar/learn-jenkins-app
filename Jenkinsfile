@@ -39,6 +39,7 @@ pipeline {
                     }
 
                     environment {
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
@@ -67,6 +68,10 @@ pipeline {
                         docker {
                             image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
                         }
+                    }
+
+                    environment {
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                     }
 
                     steps {
