@@ -20,6 +20,16 @@ pipeline {
                     npm ci
                     npm run build
                 '''
+
+                stash name: 'app', includes: '''
+                    package.json,
+                    package-lock.json,
+                    src/**,
+                    public/**,
+                    build/**,
+                    tests/**,
+                    playwright.config.*
+                '''
             }
         }
 
@@ -49,8 +59,10 @@ pipeline {
 
                     post {
                         always {
-                            junit allowEmptyResults: true,
-                                  testResults: 'test-results/junit.xml'
+                            junit(
+                                allowEmptyResults: true,
+                                testResults: 'test-results/junit.xml'
+                            )
                         }
                     }
                 }
