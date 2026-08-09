@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Install and Build') {
+        stage('Build') {
             agent {
                 docker {
                     image 'node:20-bookworm'
@@ -10,14 +10,16 @@ pipeline {
                 }
             }
 
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+            }
+
             steps {
                 sh '''
+                    rm -rf node_modules
                     npm ci
                     npm run build
                 '''
-
-                stash name: 'app',
-                      includes: 'build/**,package.json,package-lock.json,src/**,public/**,playwright.config.*,tests/**'
             }
         }
 
