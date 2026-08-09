@@ -63,10 +63,8 @@ pipeline {
                                 exit 1
                             fi
                         '''
-                        stash name: 'junit-results', includes: 'test-results/junit.xml'
                     post {
                         always {
-                            unstash 'junit-results'
                             junit 'test-results/junit.xml'
                         }
     }
