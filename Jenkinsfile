@@ -107,18 +107,24 @@ pipeline {
         stage('Deploy') {
             agent {
                 docker {
-                    image 'node:20-bookworm'
+                    image 'node:22-bookworm'
                     reuseNode true
                 }
             }
 
             environment {
                 NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                HOME = "${WORKSPACE}"
+                XDG_CONFIG_HOME = "${WORKSPACE}/.config"
             }
 
             steps {
                 sh '''
-                    npm install netlify-cli
+                    mkdir -p "$NPM_CONFIG_CACHE"
+                    mkdir -p "$XDG_CONFIG_HOME"
+
+                    npm install --no-save netlify-cli
+
                     npx netlify --version
                 '''
             }
