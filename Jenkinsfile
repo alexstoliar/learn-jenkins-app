@@ -135,6 +135,8 @@ pipeline {
                     echo "Deploying to Netlify... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
 
                     npx netlify status
+
+                    npx netlify deploy --dir=build --site=$NETLIFY_SITE_ID --prod
                 '''
             }
         }
