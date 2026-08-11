@@ -4,7 +4,7 @@ export default defineConfig({
     testDir: './e2e',
 
     use: {
-        baseURL: 'http://127.0.0.1:3000',
+        baseURL: process.env.CI_ENVIRONMENT_URL || 'http://127.0.0.1:3000',
     },
 
     webServer: {

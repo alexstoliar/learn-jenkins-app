@@ -140,5 +140,42 @@ pipeline {
                 '''
             }
         }
+
+        stage('Prod E2E Tests') {
+            agent {
+                docker {
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
+                }
+            }
+
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                CI_ENVIRONMENT_URL = "https://mellow-starburst-50aafc.netlify.app"
+            }
+
+            steps {
+                unstash 'app'
+
+                sh '''
+                    npx playwright test --reporter=html
+                '''
+            }
+
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: false,
+                        icon: '',
+                        keepAll: false,
+                        reportDir: 'playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Prod HTML Report',
+                        reportTitles: '',
+                        useWrapperFileDirectly: true
+                    ])
+                }
+            }
+        }
     }
 }
