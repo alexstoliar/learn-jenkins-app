@@ -109,7 +109,39 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy staging') {
+            agent {
+                docker {
+                    image 'node:22-bookworm'
+                    reuseNode true
+                }
+            }
+
+            environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                HOME = "${WORKSPACE}"
+                XDG_CONFIG_HOME = "${WORKSPACE}/.config"
+            }
+
+            steps {
+                sh '''
+                    mkdir -p "$NPM_CONFIG_CACHE"
+                    mkdir -p "$XDG_CONFIG_HOME"
+
+                    npm install --no-save netlify-cli
+
+                    npx netlify --version
+
+                    echo "Deploying to staging... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
+
+                    npx netlify status
+
+                    npx netlify deploy --dir=build
+                '''
+            }
+        }
+
+        stage('Deploy production') {
             agent {
                 docker {
                     image 'node:22-bookworm'
