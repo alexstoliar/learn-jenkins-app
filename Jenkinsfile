@@ -130,20 +130,24 @@ pipeline {
 
                     npm install --no-save netlify-cli
 
+                    npm install node-jq
+
                     npx netlify --version
 
                     echo "Deploying to staging... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
 
                     npx netlify status
 
-                    npx netlify deploy --dir=build
+                    npx netlify deploy --dir=build --json > deploy-output.json
+
+                    npx node-jq -r '.deploy_url' deploy-output.json
                 '''
             }
         }
 
         stage('Approval') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
+                timeout(time: 15, unit: 'MINUTES') {
                 input message: 'Do you wish to deploy to production?', ok: 'Yes, I am sure!'}
             }
         }
