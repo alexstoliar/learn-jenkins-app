@@ -140,7 +140,7 @@ pipeline {
 
                     npx netlify deploy --dir=build --json > deploy-output.json
 
-                    npx node-jq -r '.deploy_url' deploy-output.json
+                    node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('deploy-output.json')); console.log(d.deploy_url)"
                 '''
             }
         }
