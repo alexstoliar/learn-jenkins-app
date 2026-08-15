@@ -8,31 +8,28 @@ pipeline {
         REACT_APP_VERSION = "1.2.${BUILD_ID}"
 
         CI_IMAGE = 'learn-jenkins-app-ci'
-        PLAYWRIGHT_IMAGE = 'learn-jenkins-app-playwright'
     }
 
     stages {
 
         // =====================================================
-        // Build Docker images
+        // Build Docker CI image
         // =====================================================
 
-        stage('Build CI Images') {
+        stage('Build CI Image') {
             steps {
                 sh '''
-                    echo "Building CI image..."
+                    echo "=========================================="
+                    echo "Building CI Docker image"
+                    echo "=========================================="
 
                     docker build \
-                        --target ci \
+                        --progress=plain \
                         -t "$CI_IMAGE" \
                         .
 
-                    echo "Building Playwright image..."
-
-                    docker build \
-                        --target playwright \
-                        -t "$PLAYWRIGHT_IMAGE" \
-                        .
+                    echo "Docker image built successfully:"
+                    docker images "$CI_IMAGE"
                 '''
             }
         }
@@ -57,16 +54,18 @@ pipeline {
 
             steps {
                 sh '''
-                    mkdir -p "$XDG_CONFIG_HOME"
+                    echo "=========================================="
+                    echo "Building application"
+                    echo "Version: $REACT_APP_VERSION"
+                    echo "=========================================="
 
-                    echo "Building application..."
-                    echo "Application version: $REACT_APP_VERSION"
+                    mkdir -p "$XDG_CONFIG_HOME"
 
                     npm run build
 
-                    echo "Checking generated version..."
+                    echo "Build completed."
 
-                    grep -R "Application version" build || true
+                    ls -lah build
                 '''
 
                 stash(
@@ -78,15 +77,15 @@ pipeline {
 
 
         // =====================================================
-        // Tests
+        // Unit + local E2E tests
         // =====================================================
 
         stage('Run Tests') {
             parallel {
 
-                // -------------------------------------------------
-                // Unit tests
-                // -------------------------------------------------
+                // =================================================
+                // Unit Tests
+                // =================================================
 
                 stage('Unit Tests') {
                     agent {
@@ -103,7 +102,9 @@ pipeline {
 
                     steps {
                         sh '''
-                            echo "Running unit tests..."
+                            echo "=========================================="
+                            echo "Running Unit Tests"
+                            echo "=========================================="
 
                             mkdir -p test-results
 
@@ -122,14 +123,14 @@ pipeline {
                 }
 
 
-                // -------------------------------------------------
-                // Local E2E tests
-                // -------------------------------------------------
+                // =================================================
+                // Local E2E Tests
+                // =================================================
 
                 stage('E2E Tests') {
                     agent {
                         docker {
-                            image 'learn-jenkins-app-playwright'
+                            image 'learn-jenkins-app-ci'
                             reuseNode true
                         }
                     }
@@ -140,7 +141,9 @@ pipeline {
 
                     steps {
                         sh '''
-                            echo "Running local E2E tests..."
+                            echo "=========================================="
+                            echo "Running Local E2E Tests"
+                            echo "=========================================="
 
                             npx playwright test --reporter=html
                         '''
@@ -155,7 +158,7 @@ pipeline {
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
-                                reportName: 'HTML Report',
+                                reportName: 'Local HTML Report',
                                 reportTitles: '',
                                 useWrapperFileDirectly: true
                             ])
@@ -185,13 +188,17 @@ pipeline {
 
             steps {
                 script {
+
                     sh '''
+                        echo "=========================================="
+                        echo "Deploying to Staging"
+                        echo "=========================================="
+
                         mkdir -p "$XDG_CONFIG_HOME"
 
                         echo "Netlify CLI:"
                         npx netlify --version
 
-                        echo "Deploying to staging..."
                         echo "Site ID: $NETLIFY_SITE_ID"
 
                         npx netlify status
@@ -213,26 +220,34 @@ pipeline {
                                     fs.readFileSync('deploy-output.json', 'utf8')
                                 );
 
+                                if (!data.deploy_url) {
+                                    console.error('ERROR: deploy_url not found');
+                                    process.exit(1);
+                                }
+
                                 console.log(data.deploy_url);
                             "
                         ''',
                         returnStdout: true
                     ).trim()
 
-                    echo "Staging URL: ${env.STAGING_URL}"
+                    echo "=========================================="
+                    echo "Staging URL:"
+                    echo "${env.STAGING_URL}"
+                    echo "=========================================="
                 }
             }
         }
 
 
         // =====================================================
-        // Staging E2E
+        // Staging E2E Tests
         // =====================================================
 
         stage('Staging E2E Tests') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-playwright'
+                    image 'learn-jenkins-app-ci'
                     reuseNode true
                 }
             }
@@ -243,8 +258,12 @@ pipeline {
 
             steps {
                 sh '''
-                    echo "Running E2E tests against staging..."
-                    echo "URL: $CI_ENVIRONMENT_URL"
+                    echo "=========================================="
+                    echo "Running Staging E2E Tests"
+                    echo "=========================================="
+
+                    echo "Testing:"
+                    echo "$CI_ENVIRONMENT_URL"
 
                     npx playwright test --reporter=html
                 '''
@@ -287,9 +306,15 @@ pipeline {
 
             steps {
                 sh '''
+                    echo "=========================================="
+                    echo "Deploying to Production"
+                    echo "=========================================="
+
                     mkdir -p "$XDG_CONFIG_HOME"
 
-                    echo "Deploying to production..."
+                    echo "Netlify CLI:"
+                    npx netlify --version
+
                     echo "Site ID: $NETLIFY_SITE_ID"
 
                     npx netlify status
@@ -304,13 +329,13 @@ pipeline {
 
 
         // =====================================================
-        // Production E2E
+        // Production E2E Tests
         // =====================================================
 
         stage('Prod E2E Tests') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-playwright'
+                    image 'learn-jenkins-app-ci'
                     reuseNode true
                 }
             }
@@ -321,8 +346,12 @@ pipeline {
 
             steps {
                 sh '''
-                    echo "Running production E2E tests..."
-                    echo "URL: $CI_ENVIRONMENT_URL"
+                    echo "=========================================="
+                    echo "Running Production E2E Tests"
+                    echo "=========================================="
+
+                    echo "Testing:"
+                    echo "$CI_ENVIRONMENT_URL"
 
                     npx playwright test --reporter=html
                 '''
@@ -346,20 +375,31 @@ pipeline {
         }
     }
 
+
+    // =========================================================
+    // Pipeline summary
+    // =========================================================
+
     post {
+
         success {
-            echo '=========================================='
-            echo 'PIPELINE SUCCESS'
-            echo '=========================================='
+            echo '''
+==========================================
+PIPELINE SUCCESS
+==========================================
+'''
+
             echo "Application version: ${env.REACT_APP_VERSION}"
             echo "Staging URL: ${env.STAGING_URL ?: 'N/A'}"
             echo "Production URL: https://mellow-starburst-50aafc.netlify.app"
         }
 
         failure {
-            echo '=========================================='
-            echo 'PIPELINE FAILED'
-            echo '=========================================='
+            echo '''
+==========================================
+PIPELINE FAILED
+==========================================
+'''
         }
 
         always {
