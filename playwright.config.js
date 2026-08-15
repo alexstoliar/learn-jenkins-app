@@ -9,11 +9,9 @@ export default defineConfig({
             'http://127.0.0.1:3000',
     },
 
-    webServer: process.env.CI_ENVIRONMENT_URL
-        ? undefined
-        : {
-            command: 'npx serve -s build -l 3000',
-            url: 'http://127.0.0.1:3000',
-            reuseExistingServer: true,
-        },
+    webServer: {
+        command: 'npx serve -s build -l 3000',
+        url: 'http://127.0.0.1:3000',
+        reuseExistingServer: true,
+    },
 });
