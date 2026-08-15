@@ -24,7 +24,6 @@ pipeline {
                     echo "=========================================="
 
                     docker build \
-                        --progress=plain \
                         -t "$CI_IMAGE" \
                         .
 
