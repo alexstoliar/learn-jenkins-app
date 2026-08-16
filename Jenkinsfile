@@ -4,109 +4,57 @@ pipeline {
     environment {
         NETLIFY_SITE_ID = '1ee19704-eb90-441e-b220-a367c070e9b3'
         NETLIFY_AUTH_TOKEN = credentials('netlify-token')
-
-        REACT_APP_VERSION = "1.2.${BUILD_ID}"
-
-        CI_IMAGE = 'learn-jenkins-app-ci'
+        REACT_APP_VERSION = "1.2.$BUILD_ID"
     }
 
     stages {
-
-        // =====================================================
-        // Build Docker CI image
-        // =====================================================
-
-        stage('Build CI Image') {
-            steps {
-                sh '''
-                    echo "=========================================="
-                    echo "Building CI Docker image"
-                    echo "=========================================="
-
-                    docker build \
-                        -t "$CI_IMAGE" \
-                        .
-
-                    echo "Docker image built successfully:"
-                    docker images "$CI_IMAGE"
-                '''
-            }
-        }
-
-
-        // =====================================================
-        // Build application
-        // =====================================================
-
         stage('Build') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-ci'
+                    image 'node:20-bookworm'
                     reuseNode true
                 }
             }
 
             environment {
-                HOME = "${WORKSPACE}"
-                XDG_CONFIG_HOME = "${WORKSPACE}/.config"
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
             }
 
             steps {
                 sh '''
-                    echo "=========================================="
-                    echo "Building application"
-                    echo "Version: $REACT_APP_VERSION"
-                    echo "=========================================="
-
-                    mkdir -p "$XDG_CONFIG_HOME"
-
+                    rm -rf node_modules
+                    npm ci
                     npm run build
-
-                    echo "Build completed."
-
-                    ls -lah build
                 '''
 
                 stash(
                     name: 'app',
-                    includes: 'package.json,package-lock.json,src/**,public/**,build/**,tests/**,e2e/**,playwright.config.*'
+                    includes: 'package.json,package-lock.json,src/**,public/**,build/**,tests/**,playwright.config.*'
                 )
             }
         }
 
-
-        // =====================================================
-        // Unit + local E2E tests
-        // =====================================================
-
         stage('Run Tests') {
             parallel {
-
-                // =================================================
-                // Unit Tests
-                // =================================================
 
                 stage('Unit Tests') {
                     agent {
                         docker {
-                            image 'learn-jenkins-app-ci'
-                            reuseNode true
+                            image 'node:20-bookworm'
                         }
                     }
 
                     environment {
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
 
                     steps {
+                        unstash 'app'
+
                         sh '''
-                            echo "=========================================="
-                            echo "Running Unit Tests"
-                            echo "=========================================="
-
-                            mkdir -p test-results
-
+                            npm ci
                             npm test
                         '''
                     }
@@ -121,29 +69,24 @@ pipeline {
                     }
                 }
 
-
-                // =================================================
-                // Local E2E Tests
-                // =================================================
-
                 stage('E2E Tests') {
                     agent {
                         docker {
-                            image 'learn-jenkins-app-ci'
-                            reuseNode true
+                            image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
                         }
                     }
 
                     environment {
-                        CI_ENVIRONMENT_URL = 'http://127.0.0.1:3000'
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                     }
 
                     steps {
-                        sh '''
-                            echo "=========================================="
-                            echo "Running Local E2E Tests"
-                            echo "=========================================="
+                        unstash 'app'
 
+                        sh '''
+                            npm ci
+                            npx serve -s build &
+                            sleep 10
                             npx playwright test --reporter=html
                         '''
                     }
@@ -157,7 +100,7 @@ pipeline {
                                 keepAll: false,
                                 reportDir: 'playwright-report',
                                 reportFiles: 'index.html',
-                                reportName: 'Local HTML Report',
+                                reportName: 'HTML Report',
                                 reportTitles: '',
                                 useWrapperFileDirectly: true
                             ])
@@ -167,103 +110,63 @@ pipeline {
             }
         }
 
-
-        // =====================================================
-        // Deploy staging
-        // =====================================================
-
         stage('Deploy staging') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-ci'
+                    image 'node:22-bookworm'
                     reuseNode true
                 }
             }
 
             environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                 HOME = "${WORKSPACE}"
                 XDG_CONFIG_HOME = "${WORKSPACE}/.config"
             }
 
             steps {
+                sh '''
+                    mkdir -p "$NPM_CONFIG_CACHE"
+                    mkdir -p "$XDG_CONFIG_HOME"
+
+                    npm install --no-save netlify-cli
+
+                    npm install node-jq
+
+                    npx netlify --version
+
+                    echo "Deploying to staging... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
+
+                    npx netlify status
+
+                    npx netlify deploy --dir=build --json > deploy-output.json
+
+                    # node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('deploy-output.json')); console.log(d.deploy_url)"
+
+                    npx node-jq -r '.deploy_url' deploy-output.json
+                '''
                 script {
-
-                    sh '''
-                        echo "=========================================="
-                        echo "Deploying to Staging"
-                        echo "=========================================="
-
-                        mkdir -p "$XDG_CONFIG_HOME"
-
-                        echo "Netlify CLI:"
-                        npx netlify --version
-
-                        echo "Site ID: $NETLIFY_SITE_ID"
-
-                        npx netlify status
-
-                        npx netlify deploy \
-                            --dir=build \
-                            --json > deploy-output.json
-
-                        echo "Deployment response:"
-                        cat deploy-output.json
-                    '''
-
-                    env.STAGING_URL = sh(
-                        script: '''
-                            node -e "
-                                const fs = require('fs');
-
-                                const data = JSON.parse(
-                                    fs.readFileSync('deploy-output.json', 'utf8')
-                                );
-
-                                if (!data.deploy_url) {
-                                    console.error('ERROR: deploy_url not found');
-                                    process.exit(1);
-                                }
-
-                                console.log(data.deploy_url);
-                            "
-                        ''',
-                        returnStdout: true
-                    ).trim()
-
-                    echo "=========================================="
-                    echo "Staging URL:"
-                    echo "${env.STAGING_URL}"
-                    echo "=========================================="
+                    env.STAGING_URL = sh(script: "npx node-jq -r '.deploy_url' deploy-output.json", returnStdout: true).trim()
                 }
             }
         }
 
-
-        // =====================================================
-        // Staging E2E Tests
-        // =====================================================
-
         stage('Staging E2E Tests') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-ci'
-                    reuseNode true
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
                 }
             }
 
             environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                 CI_ENVIRONMENT_URL = "${env.STAGING_URL}"
             }
 
             steps {
+                unstash 'app'
+
                 sh '''
-                    echo "=========================================="
-                    echo "Running Staging E2E Tests"
-                    echo "=========================================="
-
-                    echo "Testing:"
-                    echo "$CI_ENVIRONMENT_URL"
-
                     npx playwright test --reporter=html
                 '''
             }
@@ -285,73 +188,54 @@ pipeline {
             }
         }
 
-
-        // =====================================================
-        // Deploy production
-        // =====================================================
-
         stage('Deploy production') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-ci'
+                    image 'node:22-bookworm'
                     reuseNode true
                 }
             }
 
             environment {
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                 HOME = "${WORKSPACE}"
                 XDG_CONFIG_HOME = "${WORKSPACE}/.config"
             }
 
             steps {
                 sh '''
-                    echo "=========================================="
-                    echo "Deploying to Production"
-                    echo "=========================================="
-
+                    mkdir -p "$NPM_CONFIG_CACHE"
                     mkdir -p "$XDG_CONFIG_HOME"
 
-                    echo "Netlify CLI:"
+                    npm install --no-save netlify-cli
+
                     npx netlify --version
 
-                    echo "Site ID: $NETLIFY_SITE_ID"
+                    echo "Deploying to Netlify... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
 
                     npx netlify status
 
-                    npx netlify deploy \
-                        --dir=build \
-                        --site="$NETLIFY_SITE_ID" \
-                        --prod
+                    npx netlify deploy --dir=build --site=$NETLIFY_SITE_ID --prod
                 '''
             }
         }
 
-
-        // =====================================================
-        // Production E2E Tests
-        // =====================================================
-
         stage('Prod E2E Tests') {
             agent {
                 docker {
-                    image 'learn-jenkins-app-ci'
-                    reuseNode true
+                    image 'mcr.microsoft.com/playwright:v1.39.0-jammy'
                 }
             }
 
             environment {
-                CI_ENVIRONMENT_URL = 'https://mellow-starburst-50aafc.netlify.app'
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                CI_ENVIRONMENT_URL = "https://mellow-starburst-50aafc.netlify.app"
             }
 
             steps {
+                unstash 'app'
+
                 sh '''
-                    echo "=========================================="
-                    echo "Running Production E2E Tests"
-                    echo "=========================================="
-
-                    echo "Testing:"
-                    echo "$CI_ENVIRONMENT_URL"
-
                     npx playwright test --reporter=html
                 '''
             }
@@ -365,44 +249,12 @@ pipeline {
                         keepAll: false,
                         reportDir: 'playwright-report',
                         reportFiles: 'index.html',
-                        reportName: 'Production HTML Report',
+                        reportName: 'Prod HTML Report',
                         reportTitles: '',
                         useWrapperFileDirectly: true
                     ])
                 }
             }
-        }
-    }
-
-
-    // =========================================================
-    // Pipeline summary
-    // =========================================================
-
-    post {
-
-        success {
-            echo '''
-==========================================
-PIPELINE SUCCESS
-==========================================
-'''
-
-            echo "Application version: ${env.REACT_APP_VERSION}"
-            echo "Staging URL: ${env.STAGING_URL ?: 'N/A'}"
-            echo "Production URL: https://mellow-starburst-50aafc.netlify.app"
-        }
-
-        failure {
-            echo '''
-==========================================
-PIPELINE FAILED
-==========================================
-'''
-        }
-
-        always {
-            echo "Build ${env.BUILD_ID} finished."
         }
     }
 }
