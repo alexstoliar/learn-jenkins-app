@@ -24,7 +24,7 @@ pipeline {
             }
 
             environment {
-                NPM_CONFIG_CACHE = '/root/.npm'
+                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
             }
 
             steps {
@@ -51,7 +51,7 @@ pipeline {
                     }
 
                     environment {
-                        NPM_CONFIG_CACHE = '/root/.npm'
+                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
