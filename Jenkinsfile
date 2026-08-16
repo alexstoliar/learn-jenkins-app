@@ -55,6 +55,33 @@ pipeline {
                     aws s3 ls
                     aws s3 mb s3://my-jenkins-bucket-$BUILD_ID --region us-east-1
                     aws s3 sync build/ s3://my-jenkins-bucket-$BUILD_ID/
+
+                    aws s3api delete-public-access-block \
+                        --bucket my-jenkins-bucket-$BUILD_ID
+
+                    aws s3api put-bucket-website \
+                        --bucket my-jenkins-bucket-$BUILD_ID \
+                        --website-configuration '{"IndexDocument":{"Suffix":"index.html"},"ErrorDocument":{"Key":"index.html"}}'
+
+                    cat > /tmp/bucket-policy.json << EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::my-jenkins-bucket-${BUILD_ID}/*"
+        }
+    ]
+}
+EOF
+                    aws s3api put-bucket-policy \
+                        --bucket my-jenkins-bucket-$BUILD_ID \
+                        --policy file:///tmp/bucket-policy.json
+
+                    echo "Site URL: http://my-jenkins-bucket-$BUILD_ID.s3-website-us-east-1.amazonaws.com"
                 '''
             }
 
