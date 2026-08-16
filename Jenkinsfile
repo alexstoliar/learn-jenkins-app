@@ -8,21 +8,27 @@ pipeline {
     }
 
     stages {
+        stage('Build Docker Images') {
+            steps {
+                sh 'docker build -t myapp-builder -f Dockerfile.builder .'
+                sh 'docker build -t myapp-deployer -f Dockerfile.deployer .'
+            }
+        }
+
         stage('Build') {
             agent {
                 docker {
-                    image 'node:20-bookworm'
+                    image 'myapp-builder'
                     reuseNode true
                 }
             }
 
             environment {
-                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                NPM_CONFIG_CACHE = '/root/.npm'
             }
 
             steps {
                 sh '''
-                    rm -rf node_modules
                     npm ci
                     npm run build
                 '''
@@ -40,12 +46,12 @@ pipeline {
                 stage('Unit Tests') {
                     agent {
                         docker {
-                            image 'node:20-bookworm'
+                            image 'myapp-builder'
                         }
                     }
 
                     environment {
-                        NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
+                        NPM_CONFIG_CACHE = '/root/.npm'
                         JEST_JUNIT_OUTPUT_DIR = 'test-results'
                         JEST_JUNIT_OUTPUT_NAME = 'junit.xml'
                     }
@@ -113,40 +119,32 @@ pipeline {
         stage('Deploy staging') {
             agent {
                 docker {
-                    image 'node:22-bookworm'
+                    image 'myapp-deployer'
                     reuseNode true
                 }
             }
 
             environment {
-                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                 HOME = "${WORKSPACE}"
                 XDG_CONFIG_HOME = "${WORKSPACE}/.config"
             }
 
             steps {
                 sh '''
-                    mkdir -p "$NPM_CONFIG_CACHE"
                     mkdir -p "$XDG_CONFIG_HOME"
 
-                    npm install --no-save netlify-cli
+                    netlify --version
 
-                    npm install node-jq
+                    echo "Deploying to staging... Site ID: $NETLIFY_SITE_ID"
 
-                    npx netlify --version
+                    netlify status
 
-                    echo "Deploying to staging... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
+                    netlify deploy --dir=build --json > deploy-output.json
 
-                    npx netlify status
-
-                    npx netlify deploy --dir=build --json > deploy-output.json
-
-                    # node -e "const fs=require('fs'); const d=JSON.parse(fs.readFileSync('deploy-output.json')); console.log(d.deploy_url)"
-
-                    npx node-jq -r '.deploy_url' deploy-output.json
+                    jq -r '.deploy_url' deploy-output.json
                 '''
                 script {
-                    env.STAGING_URL = sh(script: "npx node-jq -r '.deploy_url' deploy-output.json", returnStdout: true).trim()
+                    env.STAGING_URL = sh(script: "jq -r '.deploy_url' deploy-output.json", returnStdout: true).trim()
                 }
             }
         }
@@ -191,31 +189,27 @@ pipeline {
         stage('Deploy production') {
             agent {
                 docker {
-                    image 'node:22-bookworm'
+                    image 'myapp-deployer'
                     reuseNode true
                 }
             }
 
             environment {
-                NPM_CONFIG_CACHE = "${WORKSPACE}/.npm"
                 HOME = "${WORKSPACE}"
                 XDG_CONFIG_HOME = "${WORKSPACE}/.config"
             }
 
             steps {
                 sh '''
-                    mkdir -p "$NPM_CONFIG_CACHE"
                     mkdir -p "$XDG_CONFIG_HOME"
 
-                    npm install --no-save netlify-cli
+                    netlify --version
 
-                    npx netlify --version
+                    echo "Deploying to Netlify... Site ID: $NETLIFY_SITE_ID"
 
-                    echo "Deploying to Netlify... Site ID: $NETLIFY_SITE_ID: $NETLIFY_SITE_ID"
+                    netlify status
 
-                    npx netlify status
-
-                    npx netlify deploy --dir=build --site=$NETLIFY_SITE_ID --prod
+                    netlify deploy --dir=build --site=$NETLIFY_SITE_ID --prod
                 '''
             }
         }
