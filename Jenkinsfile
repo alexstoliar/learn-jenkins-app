@@ -21,7 +21,7 @@ pipeline {
                 sh '''
                     aws --version
                     aws s3 ls
-                    aws s3 mb s3://my-jenkins-bucket-$BUILD_ID
+                    aws s3 mb s3://my-jenkins-bucket-$BUILD_ID --region us-east-1
                     echo "Hello S3" > index.html
                     aws s3 cp index.html s3://my-jenkins-bucket-$BUILD_ID/index.html
                 '''
