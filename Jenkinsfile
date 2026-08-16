@@ -8,28 +8,6 @@ pipeline {
     }
 
     stages {
-
-        stage('AWS') {
-            agent {
-                docker {
-                    image 'amazon/aws-cli'
-                    args "--entrypoint=''"
-                }
-            }
-            steps {
-            withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
-                sh '''
-                    aws --version
-                    aws s3 ls
-                    aws s3 mb s3://my-jenkins-bucket-$BUILD_ID --region us-east-1
-                    echo "Hello S3" > index.html
-                    aws s3 cp index.html s3://my-jenkins-bucket-$BUILD_ID/index.html
-                '''
-            }
-
-            }
-        }
-
         stage('Build Docker Images') {
             steps {
                 sh 'docker build -t myapp-builder -f Dockerfile.builder .'
@@ -59,6 +37,27 @@ pipeline {
                     name: 'app',
                     includes: 'package.json,package-lock.json,src/**,public/**,build/**,tests/**,playwright.config.*'
                 )
+            }
+        }
+
+        stage('AWS') {
+            agent {
+                docker {
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args "--entrypoint=''"
+                }
+            }
+            steps {
+            withCredentials([usernamePassword(credentialsId: 'my-aws', passwordVariable: 'AWS_SECRET_ACCESS_KEY', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+                sh '''
+                    aws --version
+                    aws s3 ls
+                    aws s3 mb s3://my-jenkins-bucket-$BUILD_ID --region us-east-1
+                    aws s3 sync build/ s3://my-jenkins-bucket-$BUILD_ID/
+                '''
+            }
+
             }
         }
 
