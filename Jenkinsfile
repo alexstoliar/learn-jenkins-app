@@ -32,7 +32,7 @@ pipeline {
                         aws update-service \
                             --cluster LearnJenkinsApp-Cluster-Prod \
                             --service LearnJenkinsApp-TaskDefinition-Prod-service-gtynrp5p \
-                            --task-definition LearnJenkinsApp-TaskDefinition-Prod:2 \
+                            --task-definition LearnJenkinsApp-TaskDefinition-Prod:5 \
                     '''
                 }
             }
