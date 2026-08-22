@@ -31,7 +31,7 @@ pipeline {
                         LATEST_TD_REVISION=$(aws ecs register-task-definition \
                             --cli-input-json file://aws/task-definition-prod.json | jq '.taskDefinition.revision')
                             echo "Latest task definition revision: $LATEST_TD_REVISION"
-                        aws update-service \
+                        aws ecs update-service \
                             --cluster LearnJenkinsApp-Cluster-Prod \
                             --service LearnJenkinsApp-TaskDefinition-Prod-service-gtynrp5p \
                             --task-definition LearnJenkinsApp-TaskDefinition-Prod:$LATEST_TD_REVISION \
